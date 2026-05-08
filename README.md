@@ -436,7 +436,9 @@ cat /etc/init.d/lancache-dns
 
 ---
 
-## 英文简介 / English
+<a id="english"></a>
+
+## English
 
 ### What is this?
 
