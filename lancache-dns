@@ -1,0 +1,44 @@
+#!/bin/sh /etc/rc.common
+# Lancache DNS 自启脚本
+# 功能：开机后自动将 cache-domains 生成的 dnsmasq 规则复制到 dnsmasq 的实际加载目录
+# 用途：兼容 OpenClash，避免使用 uci add_list confdir 导致 dnsmasq 崩溃
+#
+# 安装方法：
+#   1. 将此文件复制到 /etc/init.d/lancache-dns
+#   2. chmod +x /etc/init.d/lancache-dns
+#   3. /etc/init.d/lancache-dns enable
+#   4. /etc/init.d/lancache-dns start
+
+START=99
+STOP=10
+
+# 在这里修改为你的 NAS IP
+NAS_IP="YOUR_NAS_IP"
+
+start() {
+    # 等待 dnsmasq 启动完成并生成临时目录
+    sleep 5
+
+    mkdir -p /etc/dnsmasq.d
+
+    # 自动匹配 dnsmasq 的 conf-dir（带 hash 后缀）
+    DNSMASQ_CONF_DIR=$(ls -d /tmp/dnsmasq.cfg*.d 2>/dev/null | head -n 1)
+
+    if [ -n "$DNSMASQ_CONF_DIR" ] && [ -n "$(ls /etc/dnsmasq.d/*.conf 2>/dev/null)" ]; then
+        echo "Lancache: Copying config to $DNSMASQ_CONF_DIR"
+        cp /etc/dnsmasq.d/*.conf "$DNSMASQ_CONF_DIR/"
+        /etc/init.d/dnsmasq reload
+    else
+        echo "Lancache: No .conf files found in /etc/dnsmasq.d/"
+    fi
+}
+
+stop() {
+    DNSMASQ_CONF_DIR=$(ls -d /tmp/dnsmasq.cfg*.d 2>/dev/null | head -n 1)
+
+    if [ -n "$DNSMASQ_CONF_DIR" ]; then
+        echo "Lancache: Removing rules from $DNSMASQ_CONF_DIR"
+        grep -rl "$NAS_IP" "$DNSMASQ_CONF_DIR" 2>/dev/null | xargs rm -f
+        /etc/init.d/dnsmasq reload
+    fi
+}
